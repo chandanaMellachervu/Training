@@ -11,6 +11,7 @@ import PerformanceCard from './pages/PerformanceCard';
 import BLTraining from './pages/BLTraining';
 import ViewPage from './pages/ViewPage'  // Add the import here
 import NewPage from './pages/NewPage'
+import StudentDetails from './pages/StudentDetails';
 const AppWrapper = () => {
   const { checkLoginStatus } = useAuth();
 
@@ -28,11 +29,13 @@ const AppWrapper = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/placements" element={<Placements />} />
+            <Route path="/student-details" element={<StudentDetails />} />
             <Route path="/training" element={<Training />} />
             <Route path="/PerformanceCard" element={<PerformanceCard />} />
-            <Route path="/BLTraining" element={<BLTraining />} />  {/* Add this route */}
-            <Route path="/view" element={<ViewPage />} />  {/* Add this route */}
+            <Route path="/BLTraining" element={<BLTraining />} /> 
+            <Route path="/view" element={<ViewPage />} /> 
             <Route path="/new-page" element={<NewPage />} /> 
+            <Route path="/" element={<Home />} />
           </Routes>
         </main>
         <Footer />

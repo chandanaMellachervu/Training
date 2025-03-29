@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { saveAs } from "file-saver";
 import { Search } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
 
 type Student = {
   "Reg No": string;
@@ -10,6 +11,7 @@ type Student = {
 };
 
 const PlacementPortal: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("2nd Year");
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
@@ -19,6 +21,7 @@ const PlacementPortal: React.FC = () => {
   const [regdNoSearch, setRegdNoSearch] = useState("");
   const [selectedSection, setSelectedSection] = useState("");
   const [sections, setSections] = useState<string[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   // Fetch data when activeTab changes
   useEffect(() => {
@@ -109,6 +112,22 @@ const PlacementPortal: React.FC = () => {
     setFilteredStudents(filtered);
   }, [regdNoSearch, selectedSection, students]);
 
+  const handleViewStudent = () => {
+    const student = students.find(s => 
+      s["Reg No"].toLowerCase() === regdNoSearch.toLowerCase().trim()
+    );
+    
+    if (student) {
+      setSearchError(null);
+      navigate('/student-details', { 
+        state: { 
+          student: JSON.parse(JSON.stringify(student)) // Ensure clean data transfer
+        } 
+      });
+    } else {
+      setSearchError("No student found with this registration number");
+    }
+  };
   // Function to download CSV
   const handleDownloadCSV = () => {
     if (filteredStudents.length === 0) return;
@@ -142,25 +161,44 @@ const PlacementPortal: React.FC = () => {
           </button>
         ))}
       </div>
-
-      {/* Filters */}
+        
+      {/* Search and Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Search Bar */}
+        {/* Search Bar with View Button */}
         <div className="relative">
           <label htmlFor="regdSearch" className="block text-sm font-medium text-gray-700 mb-2">
             Search Registration Number
           </label>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              id="regdSearch"
-              type="text"
-              className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              placeholder="Enter registration number..."
-              value={regdNoSearch}
-              onChange={(e) => setRegdNoSearch(e.target.value)}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                id="regdSearch"
+                type="text"
+                className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="Enter registration number..."
+                value={regdNoSearch}
+                onChange={(e) => {
+                  setRegdNoSearch(e.target.value);
+                  setSearchError(null);
+                }}
+              />
+            </div>
+            <button
+              onClick={handleViewStudent}
+              disabled={!regdNoSearch}
+              className={`px-4 py-2 rounded-lg text-white ${
+                regdNoSearch
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              } transition-colors`}
+            >
+              View
+            </button>
           </div>
+          {searchError && (
+            <p className="mt-1 text-sm text-red-600">{searchError}</p>
+          )}
         </div>
 
         {/* Section Dropdown */}
