@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 const fileSchema = new mongoose.Schema({
   filename: { type: String, required: true },
   year: { type: String, required: true },
-  section: { type: String, required: true },
   course: { type: String, required: true },
   uploadDate: { type: Date, default: Date.now }
 });

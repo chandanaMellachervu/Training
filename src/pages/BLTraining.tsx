@@ -1,183 +1,218 @@
-import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { saveAs } from "file-saver";
+import { Search } from "lucide-react";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 
 type Student = {
   "Reg No": string;
-  [key: string]: any; // Allow any other student properties
+  Year: number;
+  section: string;
+  [key: string]: any;
 };
 
-const BLTraining: React.FC = () => {
-  const [regNo, setRegNo] = useState('');
-  const [error, setError] = useState('');
-  const [student, setStudent] = useState<Student | null>(null);
+const PlacementPortal: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState("2023-2027");
+  const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [columns, setColumns] = useState<string[]>(["Reg No", "Year", "Section"]);
   const [loading, setLoading] = useState(false);
-  const [assessmentData, setAssessmentData] = useState<Record<string, {
-    scores: {name: string, value: any}[],
-    total?: number,
-    average?: string
-  }>>({});
+  const [error, setError] = useState<string | null>(null);
+  const [regdNoSearch, setRegdNoSearch] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [sections, setSections] = useState<string[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Fetch student data when regNo changes (you might want to trigger this on button click instead)
-  const fetchStudentData = async () => {
-    if (!regNo.trim()) {
-      setError('Please enter a registration number');
-      return;
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`http://localhost:5000/api/students/${activeTab}?timestamp=${new Date().getTime()}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${activeTab} data`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data.students) && data.students.length > 0) {
+          const allColumns = new Set<string>(["Reg No", "Year", "section"]);
+          const processedStudents = data.students.map((student: Student) => {
+            const updatedStudent = { ...student };
+            const assessmentCategories = new Set<string>();
+  
+            Object.keys(student).forEach((key) => {
+              allColumns.add(key);
+              const match = key.match(/(.*?) Assessment \d+/);
+              if (match) {
+                assessmentCategories.add(match[1]);
+              }
+            });
+  
+            assessmentCategories.forEach((category) => {
+              const assessments = Object.keys(student)
+                .filter((key) => key.startsWith(category + " Assessment"))
+                .map((key) => student[key] ?? 0);
+  
+              const total = assessments.reduce((sum, val) => sum + val, 0);
+              const average = assessments.length > 0 ? (total / assessments.length).toFixed(2) : "0.00";
+  
+              updatedStudent[`${category} Total`] = total;
+              updatedStudent[`${category} Average`] = average;
+  
+              allColumns.add(`${category} Total`);
+              allColumns.add(`${category} Average`);
+            });
+  
+            return updatedStudent;
+          });
+  
+          setColumns([...allColumns]);
+          setStudents(processedStudents);
+          setFilteredStudents(processedStudents);
+
+          const uniqueSections = [...new Set(processedStudents.map((student: { section: any; }) => student.section))];
+          setSections(uniqueSections as string[]);
+        } else {
+          setStudents([]);
+          setFilteredStudents([]);
+          setSections([]);
+          setError("No data available for this year");
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        setError(error.message);
+      })
+      .finally(() => setLoading(false));
+  }, [activeTab]);
+
+  useEffect(() => {
+    let filtered = [...students];
+
+    if (regdNoSearch) {
+      filtered = filtered.filter(student => 
+        student["Reg No"].toLowerCase().includes(regdNoSearch.toLowerCase())
+      );
     }
 
-    setLoading(true);
-    setError('');
-    try {
-      // Replace with your actual API endpoint
-      const response = await fetch(`http://localhost:5000/api/students/${regNo.trim()}`);
-      if (!response.ok) throw new Error('Student not found');
-      
-      const studentData = await response.json();
-      setStudent(studentData);
-      processAssessmentData(studentData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch student data');
-      setStudent(null);
-    } finally {
-      setLoading(false);
+    if (selectedSection) {
+      filtered = filtered.filter(student => 
+        student.section === selectedSection
+      );
+    }
+
+    setFilteredStudents(filtered);
+  }, [regdNoSearch, selectedSection, students]);
+
+  const handleViewStudent = () => {
+    const student = students.find(s => 
+      s["Reg No"].toLowerCase() === regdNoSearch.toLowerCase().trim()
+    );
+    
+    if (student) {
+      setSearchError(null);
+      navigate('/student-details', { 
+        state: { 
+          student: JSON.parse(JSON.stringify(student))
+        } 
+      });
+    } else {
+      setSearchError("No student found with this registration number");
     }
   };
 
-  // Process assessment data similar to PlacementPortal
-  const processAssessmentData = (studentData: Student) => {
-    const data: Record<string, {
-      scores: {name: string, value: any}[],
-      total?: number,
-      average?: string
-    }> = {};
+  const handleDownloadCSV = () => {
+    if (filteredStudents.length === 0) return;
 
-    Object.keys(studentData).forEach((key) => {
-      const match = key.match(/(.*?) Assessment (\d+)/);
-      if (match) {
-        const category = match[1];
-        if (!data[category]) {
-          data[category] = { scores: [] };
-        }
-        data[category].scores.push({
-          name: key,
-          value: studentData[key]
-        });
-      } else if (key.includes("Total")) {
-        const category = key.replace(" Total", "");
-        if (data[category]) {
-          data[category].total = studentData[key];
-        }
-      } else if (key.includes("Average")) {
-        const category = key.replace(" Average", "");
-        if (data[category]) {
-          data[category].average = studentData[key];
-        }
-      }
+    let csvContent = columns.join(",") + "\n";
+
+    filteredStudents.forEach((student) => {
+      const row = columns.map((col) => student[col] ?? "-").join(",");
+      csvContent += row + "\n";
     });
 
-    setAssessmentData(data);
-  };
-
-  const handleSearch = () => {
-    fetchStudentData();
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    saveAs(blob, `${activeTab.replace(" ", "_")}_Students.csv`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-xl shadow-md overflow-hidden">
-          <div className="p-8">
-            <h1 className="text-3xl font-bold text-blue-800 mb-6">BL Training Portal</h1>
-            
-            {/* Search Section */}
-            <div className="mb-8">
-              <label htmlFor="regNoSearch" className="block text-sm font-medium text-gray-700 mb-2">
-                Registration Number
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    id="regNoSearch"
-                    type="text"
-                    className="pl-10 w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    placeholder="Enter registration number..."
-                    value={regNo}
-                    onChange={(e) => {
-                      setRegNo(e.target.value);
-                      setError('');
-                    }}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  />
-                </div>
-                <button
-                  onClick={handleSearch}
-                  disabled={!regNo.trim()}
-                  className={`px-4 py-3 rounded-lg text-white ${
-                    regNo.trim()
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-gray-400 cursor-not-allowed"
-                  } transition-colors`}
-                >
-                  Search
-                </button>
-              </div>
-              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    <div className="p-4 max-w-7xl mx-auto">
+      <div className="flex space-x-4 mb-6">
+        {["2023-2027", "2022-2026", "2021-2025"].map((year) => (
+          <button
+            key={year}
+            className={`px-4 py-2 rounded-lg text-white ${
+              activeTab === year 
+                ? "bg-blue-600 hover:bg-blue-700" 
+                : "bg-gray-400 hover:bg-gray-500"
+            } transition-colors`}
+            onClick={() => setActiveTab(year)}
+          >
+            {year}
+          </button>
+        ))}
+      </div>
+        
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="relative">
+          <label htmlFor="regdSearch" className="block text-sm font-medium text-gray-700 mb-2">
+            Search Registration Number
+          </label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                id="regdSearch"
+                type="text"
+                className="pl-10 w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                placeholder="Enter registration number..."
+                value={regdNoSearch}
+                onChange={(e) => {
+                  setRegdNoSearch(e.target.value);
+                  setSearchError(null);
+                }}
+              />
             </div>
-
-            {/* Student Details Section - Shows after search */}
-            {loading && (
-              <div className="flex justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            )}
-
-            {student && (
-              <div className="mt-6">
-                <h2 className="text-xl font-bold mb-4 text-gray-800">Assessment Results</h2>
-                
-                {/* Display assessment data in tables */}
-                {Object.entries(assessmentData).map(([category, data]) => (
-                  <div key={category} className="mb-6 bg-white rounded-lg shadow-sm overflow-hidden border">
-                    <div className="bg-gray-50 px-4 py-3 border-b">
-                      <h3 className="font-semibold text-gray-700">{category} Assessments</h3>
-                    </div>
-                    <table className="w-full">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Assessment</th>
-                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Score</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.scores.map((score) => (
-                          <tr key={score.name} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-3 text-sm text-gray-700">{score.name}</td>
-                            <td className="px-4 py-3 text-sm">{score.value}</td>
-                          </tr>
-                        ))}
-                        {data.total !== undefined && (
-                          <tr className="bg-blue-50 font-medium">
-                            <td className="px-4 py-3 text-sm text-blue-700">{category} Total</td>
-                            <td className="px-4 py-3 text-sm">{data.total}</td>
-                          </tr>
-                        )}
-                        {data.average !== undefined && (
-                          <tr className="bg-green-50 font-medium">
-                            <td className="px-4 py-3 text-sm text-green-700">{category} Average</td>
-                            <td className="px-4 py-3 text-sm">{data.average}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                ))}
-              </div>
-            )}
+            <button
+              onClick={handleViewStudent}
+              disabled={!regdNoSearch}
+              className={`px-4 py-2 rounded-lg text-white ${
+                regdNoSearch
+                  ? "bg-blue-600 hover:bg-blue-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              } transition-colors`}
+            >
+              View
+            </button>
           </div>
+          {searchError && (
+            <p className="mt-1 text-sm text-red-600">{searchError}</p>
+          )}
+        </div>
+
+        <div>
+       
+         
         </div>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          <span className="ml-3 text-gray-600">Loading data...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-700 text-center">{error}</p>
+        </div>
+      )}
+
+  
+
+     
     </div>
   );
 };
-
-export default BLTraining;
+export default PlacementPortal;

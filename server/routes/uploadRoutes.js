@@ -32,11 +32,10 @@ const upload = multer({ storage });
 // Upload Route
 router.post('/upload', upload.single('file'), async (req, res) => {
     try {
-        const { year, section, course } = req.body;
+        const { year, course } = req.body;
         const newFile = new File({
             filename: req.file.filename,
             year,
-            section,
             course
         });
         await newFile.save();

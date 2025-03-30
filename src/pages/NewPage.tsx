@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { saveAs } from "file-saver";
 import { Search } from "lucide-react";
-import { useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
 
 type Student = {
   "Reg No": string;
@@ -12,7 +12,7 @@ type Student = {
 
 const PlacementPortal: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("2nd Year");
+  const [activeTab, setActiveTab] = useState("2023-2027");
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [columns, setColumns] = useState<string[]>(["Reg No", "Year", "Section"]);
@@ -23,7 +23,6 @@ const PlacementPortal: React.FC = () => {
   const [sections, setSections] = useState<string[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  // Fetch data when activeTab changes
   useEffect(() => {
     setLoading(true);
     setError(null);
@@ -39,20 +38,16 @@ const PlacementPortal: React.FC = () => {
           const allColumns = new Set<string>(["Reg No", "Year", "section"]);
           const processedStudents = data.students.map((student: Student) => {
             const updatedStudent = { ...student };
-  
-            // Identify assessment categories dynamically
             const assessmentCategories = new Set<string>();
   
             Object.keys(student).forEach((key) => {
               allColumns.add(key);
-  
               const match = key.match(/(.*?) Assessment \d+/);
               if (match) {
                 assessmentCategories.add(match[1]);
               }
             });
   
-            // Compute total & average dynamically
             assessmentCategories.forEach((category) => {
               const assessments = Object.keys(student)
                 .filter((key) => key.startsWith(category + " Assessment"))
@@ -75,10 +70,8 @@ const PlacementPortal: React.FC = () => {
           setStudents(processedStudents);
           setFilteredStudents(processedStudents);
 
-          // Extract unique sections
           const uniqueSections = [...new Set(processedStudents.map((student: { section: any; }) => student.section))];
           setSections(uniqueSections as string[]);
-
         } else {
           setStudents([]);
           setFilteredStudents([]);
@@ -93,7 +86,6 @@ const PlacementPortal: React.FC = () => {
       .finally(() => setLoading(false));
   }, [activeTab]);
 
-  // Filter students based on search and section
   useEffect(() => {
     let filtered = [...students];
 
@@ -121,14 +113,14 @@ const PlacementPortal: React.FC = () => {
       setSearchError(null);
       navigate('/student-details', { 
         state: { 
-          student: JSON.parse(JSON.stringify(student)) // Ensure clean data transfer
+          student: JSON.parse(JSON.stringify(student))
         } 
       });
     } else {
       setSearchError("No student found with this registration number");
     }
   };
-  // Function to download CSV
+
   const handleDownloadCSV = () => {
     if (filteredStudents.length === 0) return;
 
@@ -144,10 +136,9 @@ const PlacementPortal: React.FC = () => {
   };
 
   return (
-    <div className="p-4 max-w-5xl mx-auto">
-      {/* Tabs */}
+    <div className="p-4 max-w-7xl mx-auto">
       <div className="flex space-x-4 mb-6">
-        {["2nd Year", "3rd Year", "4th Year"].map((year) => (
+        {["2023-2027", "2022-2026", "2021-2025"].map((year) => (
           <button
             key={year}
             className={`px-4 py-2 rounded-lg text-white ${
@@ -162,9 +153,7 @@ const PlacementPortal: React.FC = () => {
         ))}
       </div>
         
-      {/* Search and Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* Search Bar with View Button */}
         <div className="relative">
           <label htmlFor="regdSearch" className="block text-sm font-medium text-gray-700 mb-2">
             Search Registration Number
@@ -201,7 +190,6 @@ const PlacementPortal: React.FC = () => {
           )}
         </div>
 
-        {/* Section Dropdown */}
         <div>
           <label htmlFor="section" className="block text-sm font-medium text-gray-700 mb-2">
             Filter by Section
@@ -222,7 +210,6 @@ const PlacementPortal: React.FC = () => {
         </div>
       </div>
 
-      {/* Loading State */}
       {loading && (
         <div className="flex items-center justify-center p-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -230,14 +217,12 @@ const PlacementPortal: React.FC = () => {
         </div>
       )}
 
-      {/* Error State */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-700 text-center">{error}</p>
         </div>
       )}
 
-      {/* Table */}
       <div className="bg-white p-4 rounded-lg shadow-lg overflow-auto">
         {filteredStudents.length > 0 ? (
           <table className="w-full border-collapse border border-gray-300">
@@ -273,7 +258,6 @@ const PlacementPortal: React.FC = () => {
         )}
       </div>
 
-      {/* Download Button */}
       <div className="mt-6 text-center">
         <button
           onClick={handleDownloadCSV}
@@ -290,5 +274,4 @@ const PlacementPortal: React.FC = () => {
     </div>
   );
 };
-
 export default PlacementPortal;

@@ -12,7 +12,6 @@ const EnhancedFileUploader: React.FC = () => {
   // Form data states
   const [formData, setFormData] = useState({
     year: '',
-    section: '',
     course: '',
   });
 
@@ -25,7 +24,6 @@ const EnhancedFileUploader: React.FC = () => {
   // Filter states
   const [filters, setFilters] = useState({
     year: 'All',
-    section: 'All',
     course: 'All',
   });
   
@@ -40,13 +38,11 @@ const EnhancedFileUploader: React.FC = () => {
   }>({ show: false, message: '', type: 'success' });
 
   // Options for dropdowns
-  const years = ["2nd Year", "3rd Year", "4th Year"];
-  const sections = ["A", "B", "C", "D", "E", "F", "G", "H", "I"];
-  const courses = ["QALR", "AWS","CC"];
+  const years = ["2023-2027", "2022-2026", "2021-2025"];
+  const courses = ["QALR", "AWS", "CC"];
   
   // Filter options
   const yearOptions = ["All", ...years];
-  const sectionOptions = ["All", ...sections];
   const courseOptions = ["All", ...courses];
 
   // Fetch files on component mount and when refreshTrigger changes
@@ -57,7 +53,7 @@ const EnhancedFileUploader: React.FC = () => {
   // Fetch files from the server
   const fetchFiles = async () => {
     setLoading(true);
-    setFiles([]); // Clear previous files
+    setFiles([]);
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('http://localhost:5000/api/files', {
@@ -91,7 +87,7 @@ const EnhancedFileUploader: React.FC = () => {
 
   // Handle file upload
   const handleUpload = async () => {
-    if (!selectedFile || !formData.year || !formData.section || !formData.course) {
+    if (!selectedFile || !formData.year || !formData.course) {
       showNotification('Please select a file and fill all fields', 'error');
       return;
     }
@@ -102,7 +98,6 @@ const EnhancedFileUploader: React.FC = () => {
     const uploadData = new FormData();
     uploadData.append('file', selectedFile);
     uploadData.append('year', formData.year);
-    uploadData.append('section', formData.section);
     uploadData.append('course', formData.course);
 
     try {
@@ -125,7 +120,7 @@ const EnhancedFileUploader: React.FC = () => {
       
       showNotification('File uploaded successfully!', 'success');
       setSelectedFile(null);
-      setFormData({ year: '', section: '', course: '' });
+      setFormData({ year: '', course: '' });
       if (fileInputRef.current) fileInputRef.current.value = '';
       
       // Refresh file list and switch to files view
@@ -152,7 +147,6 @@ const EnhancedFileUploader: React.FC = () => {
       await axios.delete(`http://localhost:5000/api/file/${filename}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      
       
       showNotification('File deleted successfully', 'success');
       setRefreshTrigger(prev => prev + 1);
@@ -183,7 +177,6 @@ const EnhancedFileUploader: React.FC = () => {
   const filteredFiles = files.filter(file => {
     return (
       (filters.year === 'All' || file.year === filters.year) &&
-      (filters.section === 'All' || file.section === filters.section) &&
       (filters.course === 'All' || file.course === filters.course)
     );
   });
@@ -214,10 +207,10 @@ const EnhancedFileUploader: React.FC = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-800 flex items-center">
           <FileText className="h-8 w-8 mr-2 text-blue-600" />
-          Training DashBoard
+          Training Dashboard
         </h1>
         <p className="text-gray-600 mt-2">
-          Upload and manage files for different years, sections, and courses
+          Upload and manage files for different years and courses
         </p>
       </div>
 
@@ -257,7 +250,7 @@ const EnhancedFileUploader: React.FC = () => {
           <div className="p-6">
             <h2 className="text-xl font-semibold mb-6 text-gray-800">Upload New File</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
                 <select
@@ -269,21 +262,6 @@ const EnhancedFileUploader: React.FC = () => {
                   <option value="">Select Year</option>
                   {years.map(year => (
                     <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-                <select
-                  name="section"
-                  value={formData.section}
-                  onChange={handleInputChange}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                >
-                  <option value="">Select Section</option>
-                  {sections.map(section => (
-                    <option key={section} value={section}>{section}</option>
                   ))}
                 </select>
               </div>
@@ -350,9 +328,9 @@ const EnhancedFileUploader: React.FC = () => {
             
             <button
               onClick={handleUpload}
-              disabled={isUploading || !selectedFile || !formData.year || !formData.section || !formData.course}
+              disabled={isUploading || !selectedFile || !formData.year || !formData.course}
               className={`mt-6 w-full py-3 px-4 rounded-lg text-white font-medium flex items-center justify-center ${
-                isUploading || !selectedFile || !formData.year || !formData.section || !formData.course
+                isUploading || !selectedFile || !formData.year || !formData.course
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-blue-600 hover:bg-blue-700'
               } transition-colors`}
@@ -375,7 +353,7 @@ const EnhancedFileUploader: React.FC = () => {
             </div>
 
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
                   <select
@@ -386,20 +364,6 @@ const EnhancedFileUploader: React.FC = () => {
                   >
                     {yearOptions.map(year => (
                       <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Section</label>
-                  <select
-                    name="section"
-                    value={filters.section}
-                    onChange={handleFilterChange}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
-                  >
-                    {sectionOptions.map(section => (
-                      <option key={section} value={section}>{section}</option>
                     ))}
                   </select>
                 </div>
@@ -454,9 +418,6 @@ const EnhancedFileUploader: React.FC = () => {
                         Year
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Section
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Course
                       </th>
                       <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -476,11 +437,6 @@ const EnhancedFileUploader: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
                             {file.year}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
-                            Section {file.section}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
